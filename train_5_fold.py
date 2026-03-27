@@ -40,12 +40,14 @@ def get_args():
     args = parser.parse_args()
     return args
 
-class Debug(MapTransform):
+class ConvertToMultiChanneld(MapTransform):
     def __call__(self, data):
-        print(data.keys())
-        print(data["image"].shape, "image shape")
-        print(data["label"].shape, "label shape")
-        print(data["label"].unique())      
+        d = dict(data)
+        for key in self.keys():
+            result = torch.zeros(size=(3, *d[key].size()), dtype=torch.float)
+            for c in range(1, 4):    
+                result[c - 1] = d[key] == c
+        return d            
 
 def main():
     args = get_args()
@@ -56,7 +58,7 @@ def main():
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys="image"),
             EnsureTyped(keys=["image", "label"]),
-            Debug(keys=["image", "label"]),
+            ConvertToMultiChanneld(keys=["label"]),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
@@ -77,7 +79,7 @@ def main():
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys="image"),
             EnsureTyped(keys=["image", "label"]),
-            Debug(keys=["image", "label"]),
+            ConvertToMultiChanneld(keys=["label"]),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
