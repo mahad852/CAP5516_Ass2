@@ -105,8 +105,8 @@ def main():
 
         _train_ds, _val_ds = random_split(dataset=ds, lengths=[0.8, 0.2])
 
-        train_ds = CacheDataset(_train_ds, transform=train_transform)
-        val_ds = CacheDataset(_val_ds, transform=val_transform)
+        train_ds = Dataset(_train_ds, transform=train_transform)
+        val_ds = Dataset(_val_ds, transform=val_transform)
 
         train_loader = DataLoader(train_ds, num_workers=1, batch_size=8, shuffle=True)
         val_loader = DataLoader(val_ds, num_workers=1, batch_size=8, shuffle=False)
