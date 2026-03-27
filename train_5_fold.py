@@ -40,6 +40,13 @@ def get_args():
     args = parser.parse_args()
     return args
 
+class Debug(MapTransform):
+    def __call__(self, data):
+        print(data.keys())
+        print(data["image"].shape, "image shape")
+        print(data["label"].shape, "label shape")
+        
+
 def main():
     args = get_args()
 
