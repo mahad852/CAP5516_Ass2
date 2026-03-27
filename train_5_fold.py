@@ -57,6 +57,7 @@ def main():
             EnsureChannelFirstd(keys="image"),
             EnsureTyped(keys=["image", "label"]),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Debug(),
             Spacingd(
                 keys=["image", "label"],
                 pixdim=(1.0, 1.0, 1.0),
@@ -76,6 +77,7 @@ def main():
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys="image"),
             EnsureTyped(keys=["image", "label"]),
+            Debug(),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
