@@ -45,7 +45,7 @@ class Debug(MapTransform):
         print(data.keys())
         print(data["image"].shape, "image shape")
         print(data["label"].shape, "label shape")
-        
+        print(data["label"].unique())      
 
 def main():
     args = get_args()
