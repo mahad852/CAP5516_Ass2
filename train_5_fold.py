@@ -43,10 +43,11 @@ def get_args():
 class ConvertToMultiChanneld(MapTransform):
     def __call__(self, data):
         d = dict(data)
-        for key in self.keys():
+        for key in self.keys:
             result = torch.zeros(size=(3, *d[key].size()), dtype=torch.float)
             for c in range(1, 4):    
                 result[c - 1] = d[key] == c
+            d[key] = result
         return d            
 
 def main():
