@@ -29,6 +29,7 @@ from monai.transforms import (
 )
 import os
 import json
+from medpy.metric import binary
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -99,17 +100,17 @@ def main():
         if not os.path.exists(fold_dir):
             os.makedirs(fold_dir)
 
-        fold_logs = os.path.join(fold_dir, "logs.jsonl")
-        with open(fold_logs, "w") as f:
-            pass
+        fold_logs = os.path.join(fold_dir, "logs.json")
 
         _train_ds, _val_ds = random_split(dataset=ds, lengths=[0.8, 0.2])
+        train_images = [d["image"].split(os.sep)[-1] for d in _train_ds]
+        val_images = [d["image"].split(os.sep)[-1] for d in _val_ds]
 
         train_ds = Dataset(_train_ds, transform=train_transform)
         val_ds = Dataset(_val_ds, transform=val_transform)
 
-        train_loader = DataLoader(train_ds, num_workers=1, batch_size=8, shuffle=True)
-        val_loader = DataLoader(val_ds, num_workers=1, batch_size=8, shuffle=False)
+        train_loader = DataLoader(train_ds, num_workers=1, batch_size=1, shuffle=True)
+        val_loader = DataLoader(val_ds, num_workers=1, batch_size=1, shuffle=False)
 
         model = SegResNet(
             blocks_down=[1, 2, 2, 4],
@@ -119,6 +120,9 @@ def main():
             out_channels=3,
             dropout_prob=0.2,
         ).to(device)
+
+        scaler = torch.amp.GradScaler("cuda")
+
         loss_function = DiceLoss(smooth_nr=0, smooth_dr=1e-5, squared_pred=True, to_onehot_y=False, sigmoid=True)
         optimizer = torch.optim.Adam(model.parameters(), 1e-4, weight_decay=1e-5)
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -133,9 +137,11 @@ def main():
         best_metrics_epochs_and_time = [[], [], []]
         epoch_loss_values = []
         metric_values = []
-        metric_values_tc = []
-        metric_values_wt = []
+        metric_values_edema = []
+        metric_values_nt = []
         metric_values_et = []
+        mean_hds = []
+        mean_hd95s = []
 
         for epoch in range(args.epochs):
             print(f"epoch {epoch + 1}/{args.epochs}")
@@ -152,8 +158,9 @@ def main():
                 with torch.autocast("cuda"):
                     outputs = model(inputs)
                     loss = loss_function(outputs, labels)
-                loss.backward()
-                optimizer.step()
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
 
                 epoch_loss += loss.item()
                 print(
@@ -167,28 +174,41 @@ def main():
 
             if (epoch + 1) % args.val_interval == 0:
                 model.eval()
+                batch_hds = []
+                batch_hd95s = []
+
                 with torch.no_grad():
-                    for val_data in val_loader:
-                        val_inputs, val_labels = (
-                            val_data["image"].to(device),
-                            val_data["label"].to(device),
-                        )
-                        val_outputs = sliding_window_inference(inputs=val_inputs, roi_size=(240, 240, 160), sw_batch_size=1, predictor=model, overlap=0.5)
-                        val_outputs = [post_trans(i) for i in decollate_batch(val_outputs)]
-                        dice_metric(y_pred=val_outputs, y=val_labels)
-                        dice_metric_batch(y_pred=val_outputs, y=val_labels)
+                    with torch.autocast(device_type="cuda"):
+                        for val_data in val_loader:
+                            val_inputs, val_labels = (
+                                val_data["image"].to(device),
+                                val_data["label"].to(device),
+                            )
+                            val_outputs = sliding_window_inference(inputs=val_inputs, roi_size=(192, 192, 128), sw_batch_size=1, predictor=model, overlap=0.5)
+                            val_outputs = [post_trans(i) for i in decollate_batch(val_outputs)]
+                            dice_metric(y_pred=val_outputs, y=val_labels)
+                            dice_metric_batch(y_pred=val_outputs, y=val_labels)
+
+                            et_labels = val_labels[:, -1].detach().cpu().numpy()
+                            et_outputs = torch.stack(val_outputs)[:, -1].detach().cpu().numpy()
+
+                            for pred, gt in zip(et_outputs, et_labels):
+                                batch_hds.append(binary.hd(result=pred, reference=gt))
+                                batch_hd95s.append(binary.hd95(result=pred, reference=gt))
 
                     metric = dice_metric.aggregate().item()
                     metric_values.append(metric)
                     metric_batch = dice_metric_batch.aggregate()
-                    metric_tc = metric_batch[0].item()
-                    metric_values_tc.append(metric_tc)
-                    metric_wt = metric_batch[1].item()
-                    metric_values_wt.append(metric_wt)
+                    metric_edema = metric_batch[0].item()
+                    metric_values_edema.append(metric_edema)
+                    metric_nt = metric_batch[1].item()
+                    metric_values_nt.append(metric_nt)
                     metric_et = metric_batch[2].item()
                     metric_values_et.append(metric_et)
                     dice_metric.reset()
                     dice_metric_batch.reset()
+                    mean_hds.append(np.asarray(batch_hds).mean())
+                    mean_hd95s.append(np.asarray(batch_hd95s).mean())
 
                     if metric > best_metric:
                         best_metric = metric
@@ -202,10 +222,18 @@ def main():
                         print("saved new best metric model")
                     print(
                         f"current epoch: {epoch + 1} current mean dice: {metric:.4f}"
-                        f" tc: {metric_tc:.4f} wt: {metric_wt:.4f} et: {metric_et:.4f}"
+                        f" edema: {metric_edema:.4f} non-enhancing tunmor: {metric_nt:.4f} enhancing: {metric_et:.4f}"
                         f"\nbest mean dice: {best_metric:.4f}"
                         f" at epoch: {best_metric_epoch}"
                     )
+
+        with open(fold_logs, "w") as f:
+            json.dump({
+                "best_mean_dice" : best_metric, "best_epoch": best_metric_epoch,
+                "edema_dice" : metric_values_edema, "nt_dice": metric_values_nt, "et_dice": metric_values_et, "dice": metric_values,
+                "hds": mean_hds, "hd95s": mean_hd95s,
+                "train_images": train_images, "val_images": val_images,
+            }, f)
 
 
 if __name__ == "__main__":
