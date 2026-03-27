@@ -4,7 +4,8 @@ import os
 class BratsDataset(Dataset):
     def __init__(self, root: str):
         self.root = root
-
+        self._build_index()
+        
     def _build_index(self):
         images_path = os.path.join(self.root, "imagesTr")
         labels_path = os.path.join(self.root, "labelsTr")
