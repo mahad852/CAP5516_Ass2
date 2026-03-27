@@ -192,9 +192,9 @@ def main():
                             et_labels = val_labels[:, -1].detach().cpu().numpy()
                             et_outputs = torch.stack(val_outputs)[:, -1].detach().cpu().numpy()
 
-                            for pred, gt in zip(et_outputs, et_labels):
-                                batch_hds.append(binary.hd(result=pred, reference=gt))
-                                batch_hd95s.append(binary.hd95(result=pred, reference=gt))
+                            # for pred, gt in zip(et_outputs, et_labels):
+                            #     batch_hds.append(binary.hd(result=pred, reference=gt))
+                            #     batch_hd95s.append(binary.hd95(result=pred, reference=gt))
 
                     metric = dice_metric.aggregate().item()
                     metric_values.append(metric)
@@ -207,8 +207,8 @@ def main():
                     metric_values_et.append(metric_et)
                     dice_metric.reset()
                     dice_metric_batch.reset()
-                    mean_hds.append(np.asarray(batch_hds).mean())
-                    mean_hd95s.append(np.asarray(batch_hd95s).mean())
+                    # mean_hds.append(np.asarray(batch_hds).mean())
+                    # mean_hd95s.append(np.asarray(batch_hd95s).mean())
 
                     if metric > best_metric:
                         best_metric = metric
@@ -231,7 +231,6 @@ def main():
             json.dump({
                 "best_mean_dice" : best_metric, "best_epoch": best_metric_epoch,
                 "edema_dice" : metric_values_edema, "nt_dice": metric_values_nt, "et_dice": metric_values_et, "dice": metric_values,
-                "hds": mean_hds, "hd95s": mean_hd95s,
                 "train_images": train_images, "val_images": val_images,
             }, f)
 
