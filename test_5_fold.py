@@ -21,6 +21,7 @@ from monai.transforms import (
 import os
 import json
 from medpy.metric import binary
+from tqdm import tqdm
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -130,7 +131,7 @@ def main():
 
         with torch.no_grad():
             with torch.autocast(device_type="cuda", enabled=use_amp):
-                for val_data in loader:
+                for val_data in tqdm(loader, f"validating fold: {fold + 1}"):
                     val_inputs, val_labels = (
                         val_data["image"].to(device),
                         val_data["label"].to(device),
