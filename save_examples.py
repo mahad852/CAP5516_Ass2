@@ -44,34 +44,6 @@ class ConvertToMultiChanneld(MapTransform):
             d[key] = result
         return d
 
-def infer_single_case(model, batch, device):
-    post_trans = Compose([Activations(sigmoid=True), AsDiscrete(threshold=0.5)])
-
-    image = batch["image"].to(device)
-    label = batch["label"].to(device)
-
-    roi_size = tuple(image.shape[2:])
-
-    use_amp = device.type == "cuda"
-    with torch.no_grad():
-        with torch.autocast(device_type="cuda", enabled=use_amp):
-            pred = sliding_window_inference(
-                inputs=image,
-                roi_size=roi_size,
-                sw_batch_size=1,
-                predictor=model,
-                overlap=0.0,
-            )
-
-    pred = decollate_batch(pred)[0]
-    pred = post_trans(pred)
-
-    image = decollate_batch(image)[0]
-    label = decollate_batch(label)[0]
-
-    return image.detach().cpu(), label.detach().cpu(), pred.detach().cpu()
-
-
 def normalize_image_for_display(img):
     img = np.asarray(img, dtype=np.float32)
     img = img - img.min()
@@ -238,15 +210,23 @@ def main():
     model.load_state_dict(state, strict=True)
     model.eval()
 
+    post_trans = Compose([Activations(sigmoid=True), AsDiscrete(threshold=0.5)])
+
     images_dir = os.path.join(fold_dir, "images")
     os.makedirs(images_dir, exist_ok=True)
 
     for idx, batch in tqdm(enumerate(loader), desc="Saving examples..."):
-        image, gt, pred = infer_single_case(
-            model=model,
-            batch=batch,
-            device=device,
+        val_inputs, val_labels = (
+            batch["image"].to(device),
+            batch["label"].to(device),
         )
+
+        val_outputs = sliding_window_inference(inputs=val_inputs, roi_size=(192, 192, 128), sw_batch_size=1, predictor=model, overlap=0.5)
+        val_outputs = [post_trans(i) for i in decollate_batch(val_outputs)]
+
+        pred = val_outputs[0].detach().cpu()
+        image = decollate_batch(val_inputs)[0].detach().cpu()
+        label = decollate_batch(val_labels)[0].detach().cpu()
 
         case_name = batch["image_fname"][0]
         save_path = os.path.join(images_dir, f"{case_name}_mip_overlay.png")
@@ -254,7 +234,7 @@ def main():
         title = f"Fold {args.fold} | {case_name}"
         save_case_figure(
             image=image,
-            gt=gt,
+            gt=label,
             pred=pred,
             save_path=save_path,
             title=title,
