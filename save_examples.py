@@ -23,7 +23,7 @@ from monai.transforms import (
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-
+from tqdm import tqdm
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -50,7 +50,6 @@ def infer_single_case(model, batch, device):
     image = batch["image"].to(device)
     label = batch["label"].to(device)
 
-    # use the complete transformed volume as roi_size
     roi_size = tuple(image.shape[2:])
 
     use_amp = device.type == "cuda"
@@ -83,13 +82,10 @@ def normalize_image_for_display(img):
 
 def mip_along_plane(volume, plane):
     if plane == "axial":
-        # project along D
         return np.max(volume, axis=2)
     elif plane == "coronal":
-        # project along W -> [H, D]
         return np.max(volume, axis=1)
     elif plane == "sagittal":
-        # project along H -> [W, D]
         return np.max(volume, axis=0)
     else:
         raise ValueError(f"Unknown plane: {plane}")
@@ -103,7 +99,6 @@ def make_overlay(base_slice, edema_slice, nt_slice, et_slice, alpha=0.35):
     base = normalize_image_for_display(base_slice)
     rgb = np.stack([base, base, base], axis=-1)
 
-    # ED = yellow, NCR/NET = blue, ET = red
     color_ed = np.array([1.0, 1.0, 0.0], dtype=np.float32)
     color_nt = np.array([0.0, 0.6, 1.0], dtype=np.float32)
     color_et = np.array([1.0, 0.0, 0.0], dtype=np.float32)
@@ -179,20 +174,6 @@ def save_case_figure(image, gt, pred, save_path, title="", modality=0):
     plt.savefig(save_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
-
-def get_case_name(raw_item, fallback_idx):
-    if isinstance(raw_item, dict) and "image" in raw_item:
-        image_field = raw_item["image"]
-        if isinstance(image_field, (list, tuple)):
-            image_field = image_field[0]
-        base = os.path.basename(str(image_field))
-        stem = os.path.splitext(base)[0]
-        if stem.endswith(".nii"):
-            stem = os.path.splitext(stem)[0]
-        return stem
-    return f"case_{fallback_idx:03d}"
-
-
 def main():
     args = get_args()
 
@@ -260,15 +241,14 @@ def main():
     images_dir = os.path.join(fold_dir, "images")
     os.makedirs(images_dir, exist_ok=True)
 
-    for idx, batch in enumerate(loader):
+    for idx, batch in tqdm(enumerate(loader), desc="Saving examples..."):
         image, gt, pred = infer_single_case(
             model=model,
             batch=batch,
             device=device,
         )
 
-        raw_item = base_ds[idx]
-        case_name = get_case_name(raw_item, idx)
+        case_name = batch["image_fname"][0]
         save_path = os.path.join(images_dir, f"{case_name}_mip_overlay.png")
 
         title = f"Fold {args.fold} | {case_name}"
