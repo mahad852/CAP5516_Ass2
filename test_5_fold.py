@@ -2,7 +2,7 @@ from dataset.BratsDataset import BratsDataset
 import argparse
 import torch
 import numpy as np
-from monai.data import DataLoader, decollate_batch, Dataset, CacheDataset
+from monai.data import DataLoader, decollate_batch, Dataset
 from monai.inferers import sliding_window_inference
 from monai.metrics import DiceMetric
 from monai.networks.nets import SegResNet
@@ -117,7 +117,7 @@ def main():
             val_fnames = obj["val_images"]
 
         _ds = BratsDataset(root=args.root, fnames=val_fnames)
-        ds = CacheDataset(_ds, transform=val_transform, num_workers=1)
+        ds = Dataset(_ds, transform=val_transform)
         loader = DataLoader(ds, num_workers=1, batch_size=1, shuffle=False)
 
         hds_et = []
