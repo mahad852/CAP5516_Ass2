@@ -85,6 +85,16 @@ def make_overlay(base_slice, edema_slice, nt_slice, et_slice, alpha=0.35):
 
     return np.clip(rgb, 0.0, 1.0)
 
+def compute_case_dice(pred: torch.Tensor, gt: torch.Tensor, eps: float = 1e-8):
+    pred = pred.bool()
+    gt = gt.bool()
+
+    inter = (pred & gt).sum().float()
+    denom = pred.sum().float() + gt.sum().float()
+
+    if denom == 0:
+        return 1.0
+    return float((2.0 * inter + eps) / (denom + eps))
 
 def save_case_figure(image, gt, pred, save_path, title="", modality=0):
     image_np = image[modality].numpy()
@@ -241,7 +251,9 @@ def main():
             modality=args.modality,
         )
 
-        print(f"[{idx + 1}/{len(ds)}] saved: {save_path}")
+        dice = compute_case_dice(pred=pred, gt=label)
+
+        print(f"[{idx + 1}/{len(ds)}] saved: {save_path} | dice: {dice:.4f}")
 
 
 if __name__ == "__main__":
