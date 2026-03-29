@@ -25,11 +25,11 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from tqdm import tqdm
 
-plt.rcParams.update({
-    "font.size": 12,
-    "axes.titlesize": 13,
-    "figure.titlesize": 14,
-})
+# plt.rcParams.update({
+#     "font.size": 12,
+#     "axes.titlesize": 13,
+#     "figure.titlesize": 14,
+# })
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -152,11 +152,11 @@ def save_case_figure(image, gt, pred, save_path, title="", modality=0):
 
     fig.legend(
         handles=legend_handles,
-        loc="center right",
-        ncol=1,                      # vertical legend
-        bbox_to_anchor=(0.98, 0.5),  # push to right side
+        loc="lower center",
+        ncol=3,
+        bbox_to_anchor=(0.5, 0.02),
         frameon=True,
-        fontsize=13,
+        fontsize=14
     )
 
     plt.tight_layout(rect=[0, 0, 0.92, 0.95])
