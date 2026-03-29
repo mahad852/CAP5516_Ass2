@@ -28,7 +28,7 @@ def main():
         all_et_dice_scores.append(obj["et_dice"])
         all_nt_dice_scores.append(obj["nt_dice"])
 
-    epochs = [e + 1 for e in range(all_dice_scores[0])]
+    epochs = [e + 1 for e in range(len(all_dice_scores[0]))]
 
     average_dice_scores = np.asarray(all_dice_scores).mean(axis=0)
     average_edema_dice_scores = np.asarray(all_edema_dice_scores).mean(axis=0)
