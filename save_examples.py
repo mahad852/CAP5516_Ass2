@@ -159,7 +159,7 @@ def save_case_figure(image, gt, pred, save_path, title="", modality=0):
         fontsize=14
     )
 
-    plt.tight_layout(rect=[0, 0, 0.92, 0.95])
+    plt.subplots_adjust(top=0.90, bottom=0.15, hspace=0.3, wspace=0.1)
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
