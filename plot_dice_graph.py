@@ -44,6 +44,8 @@ def main():
     plt.xlabel("Epochs")
     plt.ylabel("Dice")
 
+    plt.title("Average Dice vs. Rounds")
+
     plt.legend()
 
     plt.savefig(os.path.join(args.output_dir, "average_dice.png"))
