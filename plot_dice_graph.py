@@ -20,7 +20,7 @@ def main():
     all_et_dice_scores = []
 
     for fold in range(5):
-        with open(os.path.join(args.output_dir, str(fold)), "r") as f:
+        with open(os.path.join(args.output_dir, str(fold), "logs.json"), "r") as f:
             obj = json.load(f)
 
         all_dice_scores.append(obj["dice"])
