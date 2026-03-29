@@ -14,6 +14,9 @@ class BratsDataset(Dataset):
         self.images_and_labels = []
 
         for fname in os.listdir(images_path):
+            if self.fnames and fname not in self.fnames:
+                continue
+            
             if fname.endswith("nii.gz") and fname.startswith("BRATS"):
                 image_path = os.path.join(images_path, fname)
                 label_path = os.path.join(labels_path, fname)
