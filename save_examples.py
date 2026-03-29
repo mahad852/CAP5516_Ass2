@@ -72,7 +72,7 @@ def make_overlay(base_slice, edema_slice, nt_slice, et_slice, alpha=0.35):
     rgb = np.stack([base, base, base], axis=-1)
 
     color_ed = np.array([1.0, 1.0, 0.0], dtype=np.float32)
-    color_nt = np.array([0.0, 0.6, 1.0], dtype=np.float32)
+    color_nt = np.array([0.0, 1.0, 1.0], dtype=np.float32)
     color_et = np.array([1.0, 0.0, 0.0], dtype=np.float32)
 
     for mask, color in [
@@ -129,7 +129,7 @@ def save_case_figure(image, gt, pred, save_path, title="", modality=0):
 
     legend_handles = [
         Patch(facecolor=(1.0, 1.0, 0.0), edgecolor="black", label="Edema"),
-        Patch(facecolor=(0.0, 0.6, 1.0), edgecolor="black", label="Non-enhancing tumor"),
+        Patch(facecolor=(0.0, 1.0, 1.0), edgecolor="black", label="Non-enhancing tumor"),
         Patch(facecolor=(1.0, 0.0, 0.0), edgecolor="black", label="Enhancing tumor"),
     ]
 
