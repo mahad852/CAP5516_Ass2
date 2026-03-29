@@ -25,6 +25,12 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from tqdm import tqdm
 
+plt.rcParams.update({
+    "font.size": 12,
+    "axes.titlesize": 13,
+    "figure.titlesize": 14,
+})
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=str, required=True)
@@ -110,7 +116,8 @@ def save_case_figure(image, gt, pred, save_path, title="", modality=0):
     planes = ["axial", "coronal", "sagittal"]
 
     fig, axes = plt.subplots(3, 2, figsize=(10, 15))
-    fig.suptitle(title, fontsize=13)
+    plt.subplots_adjust(wspace=0.05, hspace=0.15)
+    fig.suptitle(title, fontsize=15)
 
     for row, plane in enumerate(planes):
         base_mip = mip_along_plane(image_np, plane)
@@ -130,11 +137,11 @@ def save_case_figure(image, gt, pred, save_path, title="", modality=0):
         pred_overlay = maybe_rotate_for_display(pred_overlay)
 
         axes[row, 0].imshow(gt_overlay)
-        axes[row, 0].set_title(f"{plane.capitalize()} - Ground Truth")
+        axes[row, 0].set_title(f"{plane.capitalize()} - Ground Truth", fontsize=14)
         axes[row, 0].axis("off")
 
         axes[row, 1].imshow(pred_overlay)
-        axes[row, 1].set_title(f"{plane.capitalize()} - Prediction")
+        axes[row, 1].set_title(f"{plane.capitalize()} - Prediction", fontsize=14)
         axes[row, 1].axis("off")
 
     legend_handles = [
@@ -145,13 +152,14 @@ def save_case_figure(image, gt, pred, save_path, title="", modality=0):
 
     fig.legend(
         handles=legend_handles,
-        loc="lower center",
-        ncol=3,
-        bbox_to_anchor=(0.5, 0.02),
+        loc="center right",
+        ncol=1,                      # vertical legend
+        bbox_to_anchor=(0.98, 0.5),  # push to right side
         frameon=True,
+        fontsize=13,
     )
 
-    plt.tight_layout(rect=[0, 0.05, 1, 0.97])
+    plt.tight_layout(rect=[0, 0, 0.92, 0.95])
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
